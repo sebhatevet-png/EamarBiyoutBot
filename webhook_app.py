@@ -12,7 +12,38 @@ if not DOMAIN:
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "super-secret")
 BASE_URL = f"https://{DOMAIN}".rstrip("/")
 WEBHOOK_PATH = f"/webhook/{WEBHOOK_SECRET}"
-WEBHOOK_URL = BASE_URL + WEBHOOK_PATH
+import os
+from fastapi import FastAPI
+from aiogram import Bot, Dispatcher, types
+from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "super-secret")
+DOMAIN = os.getenv("WEBHOOK_DOMAIN") or os.getenv("RAILWAY_PUBLIC_DOMAIN")
+
+if not DOMAIN:
+    raise RuntimeError("لم يتم تحديد WEBHOOK_DOMAIN أو RAILWAY_PUBLIC_DOMAIN")
+
+# إزالة البروتوكول الزائد والمنفذ (في حال وجودهما)
+DOMAIN = DOMAIN.strip().replace("http://", "").replace("https://", "")
+DOMAIN = DOMAIN.split(":")[0]  # إزالة أي منفذ مثل :10000
+BASE_URL = f"https://{DOMAIN}"
+
+WEBHOOK_PATH = f"/webhook/{WEBHOOK_SECRET}"
+WEBHOOK_URL = f"{BASE_URL}{WEBHOOK_PATH}"
+
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher()
+
+app = FastAPI()
+
+
+@app.on_event("startup")
+async def on_startup():
+    await bot.delete_webhook(drop_pending_updates=True)
+    await bot.set_webhook(url=WEBHOOK_URL)
+    print(f"✅ Webhook set: {WEBHOOK_URL}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
