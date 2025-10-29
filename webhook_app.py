@@ -3,11 +3,11 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from aiogram.types import Update
-from bot import bot, dp  # يستورد bot و dp من bot.py (بدون تشغيل polling)
+from bot import bot, dp  # يستورد bot و dp (لا يشغّل polling)
 
 DOMAIN = os.getenv("WEBHOOK_DOMAIN") or os.getenv("RAILWAY_PUBLIC_DOMAIN")
 if not DOMAIN:
-    raise RuntimeError("حدد WEBHOOK_DOMAIN أو استخدم RAILWAY_PUBLIC_DOMAIN (تضبطها Railway تلقائيًا).")
+    raise RuntimeError("حدد WEBHOOK_DOMAIN أو اترك Railway يملأ RAILWAY_PUBLIC_DOMAIN تلقائيًا.")
 
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "super-secret")
 BASE_URL = f"https://{DOMAIN}".rstrip("/")
@@ -16,8 +16,10 @@ WEBHOOK_URL = BASE_URL + WEBHOOK_PATH
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # يضبط عنوان الويب هوك عند تشغيل السيرفر
     await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
     yield
+    # عند الإطفاء يلغي الويب هوك (اختياري)
     try:
         await bot.delete_webhook(drop_pending_updates=False)
     except Exception:
